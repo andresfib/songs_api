@@ -1,0 +1,4 @@
+*.pyc
+*.cpython*
+
+.vscode/settings.json
