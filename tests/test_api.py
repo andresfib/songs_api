@@ -16,7 +16,7 @@ with codecs.open('tests/fixtures/songs.json', 'rU', 'utf-8') as f:
             "difficulty": 10.32,
             "level": 6,
             "released": "2018-01-25",
-            "ratings": [3, 2]}
+            "ratings": [3, 1, 2, 4]}
 
 class SongTestAPI(unittest.TestCase):
 
@@ -41,11 +41,11 @@ class SongTestAPI(unittest.TestCase):
 
     def test_get_avg_difficulty(self):
         response = loads(self.app.get('/songs/avg/difficulty').get_data())
-        self.assertEqual(response['avg_difficulty'], round(10.3236363636, 2))
+        self.assertEqual(response['avg'], round(10.3236363636, 2))
 
     def test_get_avg_difficulty_with_level(self):
         response = loads(self.app.get('/songs/avg/difficulty?level=13').get_data())
-        self.assertEqual(response['avg_difficulty'], round(14.096, 2))
+        self.assertEqual(response['avg'], round(14.096, 2))
 
     def test_get_avg_difficulty_with_non_existent_level(self):
         response_status = self.app.get('/songs/avg/difficulty?level=12343').status_code
@@ -75,9 +75,23 @@ class SongTestAPI(unittest.TestCase):
         song_id = str(self.song_id)
         query = '/songs/rating?rating=' + rating + '&song_id=' + song_id
         response = loads(self.app.post(query).get_data())
-        print(response)
-        self.assertEqual(len(response['ratings']), 3)
+        self.assertEqual(len(response['ratings']), 5)
 
+    def test_give_song_wrong_rating(self):
+        rating = '6'
+        song_id = str(self.song_id)
+        query = '/songs/rating?rating=' + rating + '&song_id=' + song_id
+        response_status = self.app.post(query).status_code
+        self.assertEqual(response_status, 400)
+
+    def test_get_ratings_song(self):
+        song_id = str(self.song_id)
+        query = '/songs/avg/rating?song_id=' + song_id
+        response = loads(self.app.get(query).get_data())
+        self.assertEqual(len(response), 3)
+        self.assertEqual(response['avg'], 2.5)
+        self.assertEqual(response['max'], 4)
+        self.assertEqual(response['min'], 1)
 
 
 if __name__ == '__main__':

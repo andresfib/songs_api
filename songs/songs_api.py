@@ -27,7 +27,7 @@ def get_avg_difficulty():
     pipeline.append({
         '$group': {
             '_id': 'null',
-            'avg_difficulty': {'$avg': '$difficulty'}
+            'avg': {'$avg': '$difficulty'}
         }
     })
 
@@ -40,7 +40,7 @@ def get_avg_difficulty():
         return invalid_usage('Level does not exist in the database')
 
     result = {
-        'avg_difficulty': round(result['avg_difficulty'], 2),
+        'avg': round(result['avg'], 2),
         'level': level}
     return jsonify(result)
 
@@ -62,14 +62,24 @@ def rate_song():
     song_id = request.args.get('song_id', None)
     rating = request.args.get('rating', None)
 
-    # ratings = song.get('ratings', [])
-    # ratings.append(rating)
     mongo.db.songs.update_one({'_id': ObjectId(song_id)},
                               {'$push': {'ratings': int(rating)}})
     song = mongo.db.songs.find_one({'_id': ObjectId(song_id)})
     return Response(dumps(song),
                     status=200,
                     mimetype='application/json')
+
+@songs_api.route('/songs/avg/rating')
+def get_song_ratings_stats():
+    song_id = request.args.get('song_id', None)
+    song = mongo.db.songs.find_one({'_id': ObjectId(song_id)}, {'ratings': 1})
+    ratings = song['ratings']
+    result = {
+        'avg': sum(ratings)/float(len(ratings)),
+        'max': max(ratings),
+        'min': min(ratings)
+    }
+    return jsonify(result)
 
 
 def invalid_usage(message, status_code=400):
