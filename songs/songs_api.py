@@ -1,15 +1,17 @@
-from flask import Flask, jsonify, make_response, Response, Blueprint, request
+from flask import jsonify, Response, Blueprint, request
 from bson.json_util import dumps
-from flask_pymongo import PyMongo
-import pymongo
+from bson.objectid import ObjectId
+from .models import mongo
 
 songs_api = Blueprint('songs_api', __name__)
-from .models import mongo
+
 
 @songs_api.route('/songs')
 def get_songs():
+    # TODO: Paginate
     cursor = mongo.db.songs.find({})
     return cursor_to_response(cursor)
+
 
 @songs_api.route('/songs/avg/difficulty')
 def get_avg_difficulty():
@@ -22,16 +24,16 @@ def get_avg_difficulty():
             return invalid_usage('Level should be an int')
         pipeline.append({'$match': {'level': level}})
 
-    pipeline.append(
-        {'$group': {
+    pipeline.append({
+        '$group': {
             '_id': 'null',
             'avg_difficulty': {'$avg': '$difficulty'}
-            }
-        })
+        }
+    })
 
     avg = mongo.db.songs.aggregate(pipeline)
 
-    #There should only be one document returned
+    # There should only be one document returned
     try:
         result = avg.next()
     except StopIteration:
@@ -42,18 +44,39 @@ def get_avg_difficulty():
         'level': level}
     return jsonify(result)
 
+
 @songs_api.route('/songs/search')
 def search_songs():
     message = request.args.get('message', None)
     if message is None:
         return jsonify({})
-    cursor = mongo.db.songs.find({'$text': {'$search': message}})
+
+    query = make_and_text_query(message)
+    cursor = mongo.db.songs.find({'$text': {'$search': query}})
     return cursor_to_response(cursor)
+
+
+@songs_api.route('/songs/rating', methods=['POST'])
+def rate_song():
+    # TODO: Validation vouluptous
+    song_id = request.args.get('song_id', None)
+    rating = request.args.get('rating', None)
+
+    # ratings = song.get('ratings', [])
+    # ratings.append(rating)
+    mongo.db.songs.update_one({'_id': ObjectId(song_id)},
+                              {'$push': {'ratings': int(rating)}})
+    song = mongo.db.songs.find_one({'_id': ObjectId(song_id)})
+    return Response(dumps(song),
+                    status=200,
+                    mimetype='application/json')
+
 
 def invalid_usage(message, status_code=400):
     response = jsonify({'message': message})
     response.status_code = status_code
     return response
+
 
 def cursor_to_response(cursor):
     result = []
@@ -62,3 +85,7 @@ def cursor_to_response(cursor):
     return Response(dumps(result),
                     status=200,
                     mimetype='application/json')
+
+
+def make_and_text_query(message):
+    return '"' + '" "'.join(message.split()) + '"'

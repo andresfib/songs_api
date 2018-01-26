@@ -1,15 +1,22 @@
 import unittest
 from bson.json_util import loads
 import codecs
+import urllib
 
 from songs import create_app
 from songs.models import mongo
 
 # Load data once
 data = []
-with codecs.open('tests/fixtures/songs.json','rU','utf-8') as f:
+with codecs.open('tests/fixtures/songs.json', 'rU', 'utf-8') as f:
     for line in f:
-       data.append(loads(line))
+        data.append(loads(line))
+    song = {"artist": "The Andrews",
+            "title": "Babysitting",
+            "difficulty": 10.32,
+            "level": 6,
+            "released": "2018-01-25",
+            "ratings": [3, 2]}
 
 class SongTestAPI(unittest.TestCase):
 
@@ -19,6 +26,8 @@ class SongTestAPI(unittest.TestCase):
 
         with self.songs_app.app_context():
             mongo.db.songs.insert_many(data)
+            result = mongo.db.songs.insert_one(song)
+            self.song_id = result.inserted_id
 
         self.app = self.songs_app.test_client()
 
@@ -28,7 +37,7 @@ class SongTestAPI(unittest.TestCase):
 
     def test_get_songs(self):
         response = loads(self.app.get('/songs').get_data())
-        self.assertEqual(len(response), 11)
+        self.assertEqual(len(response), 12)
 
     def test_get_avg_difficulty(self):
         response = loads(self.app.get('/songs/avg/difficulty').get_data())
@@ -54,6 +63,22 @@ class SongTestAPI(unittest.TestCase):
     def test_search_songs_yousician_message(self):
         response = loads(self.app.get('/songs/search?message=yousician').get_data())
         self.assertEqual(len(response), 10)
+
+    def test_search_songs_yousician_power_message(self):
+        message = urllib.parse.quote('yousician power')
+        response = loads(self.app.get('/songs/search?message=' + message)
+                         .get_data())
+        self.assertEqual(len(response), 1)
+
+    def test_give_song_rating(self):
+        rating = '3'
+        song_id = str(self.song_id)
+        query = '/songs/rating?rating=' + rating + '&song_id=' + song_id
+        response = loads(self.app.post(query).get_data())
+        print(response)
+        self.assertEqual(len(response['ratings']), 3)
+
+
 
 if __name__ == '__main__':
     unittest.main()
