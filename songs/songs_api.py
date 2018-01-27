@@ -2,6 +2,8 @@ from flask import jsonify, Response, Blueprint, request
 from bson.json_util import dumps
 from bson.objectid import ObjectId
 from .models import mongo
+from .api_utils import invalid_usage, make_and_text_query
+from .api_utils import ApiResult
 
 songs_api = Blueprint('songs_api', __name__)
 
@@ -9,8 +11,8 @@ songs_api = Blueprint('songs_api', __name__)
 @songs_api.route('/songs')
 def get_songs():
     # TODO: Paginate
-    cursor = mongo.db.songs.find({})
-    return cursor_to_response(cursor)
+    result = ApiResult(list(mongo.db.songs.find({})))
+    return result.to_response()
 
 
 @songs_api.route('/songs/avg/difficulty')
@@ -39,10 +41,10 @@ def get_avg_difficulty():
     except StopIteration:
         return invalid_usage('Level does not exist in the database')
 
-    result = {
+    result = ApiResult({
         'avg': round(result['avg'], 2),
-        'level': level}
-    return jsonify(result)
+        'level': level})
+    return result.to_response()
 
 
 @songs_api.route('/songs/search')
@@ -53,7 +55,8 @@ def search_songs():
 
     query = make_and_text_query(message)
     cursor = mongo.db.songs.find({'$text': {'$search': query}})
-    return cursor_to_response(cursor)
+    result = ApiResult(list(cursor))
+    return result.to_response()
 
 
 @songs_api.route('/songs/rating', methods=['POST'])
@@ -65,37 +68,18 @@ def rate_song():
     mongo.db.songs.update_one({'_id': ObjectId(song_id)},
                               {'$push': {'ratings': int(rating)}})
     song = mongo.db.songs.find_one({'_id': ObjectId(song_id)})
-    return Response(dumps(song),
-                    status=200,
-                    mimetype='application/json')
+    result = ApiResult(song)
+    return result.to_response()
+
 
 @songs_api.route('/songs/avg/rating')
 def get_song_ratings_stats():
     song_id = request.args.get('song_id', None)
     song = mongo.db.songs.find_one({'_id': ObjectId(song_id)}, {'ratings': 1})
     ratings = song['ratings']
-    result = {
+    result = ApiResult({
         'avg': sum(ratings)/float(len(ratings)),
         'max': max(ratings),
         'min': min(ratings)
-    }
-    return jsonify(result)
-
-
-def invalid_usage(message, status_code=400):
-    response = jsonify({'message': message})
-    response.status_code = status_code
-    return response
-
-
-def cursor_to_response(cursor):
-    result = []
-    for item in cursor:
-        result.append(item)
-    return Response(dumps(result),
-                    status=200,
-                    mimetype='application/json')
-
-
-def make_and_text_query(message):
-    return '"' + '" "'.join(message.split()) + '"'
+    })
+    return result.to_response()

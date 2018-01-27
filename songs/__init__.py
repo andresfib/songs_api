@@ -5,9 +5,9 @@ import pymongo
 from .songs_api import songs_api
 from .models import mongo
 
+
 def create_app(database):
     app = Flask(__name__)
-    #app.config.from_pyfile(config_filename)
 
     app.config['MONGO_DBNAME'] = database
     app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
