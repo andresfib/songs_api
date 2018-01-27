@@ -39,6 +39,10 @@ class SongTestAPI(unittest.TestCase):
         response = loads(self.app.get('/songs').get_data())
         self.assertEqual(len(response), 12)
 
+    def test_get_third_page_of_songs(self):
+        response = loads(self.app.get('/songs?page=3').get_data())
+        self.assertEqual(len(response), 2)
+
     def test_get_avg_difficulty(self):
         response = loads(self.app.get('/songs/avg/difficulty').get_data())
         self.assertEqual(response['avg'], round(10.3236363636, 2))
