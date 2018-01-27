@@ -16,8 +16,19 @@ class ApiResult(object):
 
     def to_response(self):
         return Response(dumps(self.value),
-                        status=200,
+                        status=self.status,
                         mimetype='application/json')
+
+
+class ApiError(object):
+
+    def __init__(self, message, status=400):
+        self.message = message
+        self.status = status
+
+    def to_response(self):
+        return ApiResult({'message': self.message},
+                         status=self.status).to_response()
 
 
 def invalid_usage(message, status_code=400):

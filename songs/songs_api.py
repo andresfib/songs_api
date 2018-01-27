@@ -1,9 +1,8 @@
-from flask import jsonify, Response, Blueprint, request
-from bson.json_util import dumps
+from flask import jsonify, Blueprint, request
 from bson.objectid import ObjectId
 from .models import mongo
 from .api_utils import invalid_usage, make_and_text_query
-from .api_utils import ApiResult
+from .api_utils import ApiResult, ApiError
 
 songs_api = Blueprint('songs_api', __name__)
 
@@ -39,7 +38,7 @@ def get_avg_difficulty():
     try:
         result = avg.next()
     except StopIteration:
-        return invalid_usage('Level does not exist in the database')
+        return ApiError('Level does not exist in the database').to_response()
 
     result = ApiResult({
         'avg': round(result['avg'], 2),
