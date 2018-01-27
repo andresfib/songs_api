@@ -57,8 +57,8 @@ class SongTestAPI(unittest.TestCase):
         self.assertEqual(response_status, 400)
 
     def test_search_songs_no_message(self):
-        response = loads(self.app.get('/songs/search').get_data())
-        self.assertEqual(len(response), 0)
+        response_status = self.app.get('/songs/search').status_code
+        self.assertEqual(response_status, 400)
 
     def test_search_songs_yousician_message(self):
         response = loads(self.app.get('/songs/search?message=yousician').get_data())
