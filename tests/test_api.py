@@ -43,62 +43,84 @@ class SongTestAPI(unittest.TestCase):
             data.append(self.song)
 
     def test_get_songs(self):
-        response = loads(self.app.get('/songs').get_data())
-        self.assertEqual(len(response), 11)
+        response = self.app.get('/songs')
+        data = get_data(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data), 11)
+
 
     def test_get_third_page_of_songs(self):
-        response = loads(self.app.get('/songs?page=3').get_data())
-        self.assertEqual(len(response), 1)
+        response = self.app.get('/songs?page=3')
+        data = get_data(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data), 1)
 
     def test_get_next_page_of_songs(self):
         query = '/songs?last_id=' + str(self.song_id)
-        response = loads(self.app.get(query).get_data())
-        self.assertEqual(len(response), SONGS_PER_PAGE)
+        response = self.app.get(query)
+        data = get_data(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data), SONGS_PER_PAGE)
 
     def test_get_avg_difficulty(self):
-        response = loads(self.app.get('/songs/avg/difficulty').get_data())
-        self.assertEqual(response['avg'], round(10.3236363636, 2))
+        response = self.app.get('/songs/avg/difficulty')
+        data = get_data(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['avg'], round(10.3236363636, 2))
 
     def test_get_avg_difficulty_with_level(self):
-        response = loads(self.app.get('/songs/avg/difficulty?level=13').get_data())
-        self.assertEqual(response['avg'], round(14.096, 2))
+        response = self.app.get('/songs/avg/difficulty?level=13')
+        data = get_data(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['avg'], round(14.096, 2))
 
     def test_get_avg_difficulty_with_non_existent_level(self):
-        response_status = self.app.get('/songs/avg/difficulty?level=12343').status_code
-        self.assertEqual(response_status, 400)
+        response = self.app.get('/songs/avg/difficulty?level=12343')
+        self.assertEqual(response.status_code, 400)
 
     def test_get_avg_difficulty_with_wrong_level(self):
-        response_status = self.app.get('/songs/avg/difficulty?level=asdf').status_code
-
-        self.assertEqual(response_status, 400)
+        response = self.app.get('/songs/avg/difficulty?level=asdf')
+        self.assertEqual(response.status_code, 400)
 
     def test_search_songs_no_message(self):
-        response_status = self.app.get('/songs/search').status_code
-        self.assertEqual(response_status, 400)
+        response = self.app.get('/songs/search')
+        self.assertEqual(response.status_code, 400)
 
     def test_search_songs_yousician_message(self):
-        response = loads(self.app.get('/songs/search?message=yousician').get_data())
-        self.assertEqual(len(response), 10)
+        response = self.app.get('/songs/search?message=yousician')
+        data = get_data(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data), 10)
 
     def test_search_songs_yousician_power_message(self):
         message = urllib.parse.quote('yousician power')
-        response = loads(self.app.get('/songs/search?message=' + message)
-                         .get_data())
-        self.assertEqual(len(response), 1)
+        response = self.app.get('/songs/search?message=' + message)
+        data = get_data(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data), 1)
 
     def test_give_song_rating(self):
         rating = '3'
         song_id = str(self.song_id)
         query = '/songs/rating?rating=' + rating + '&song_id=' + song_id
-        response = loads(self.app.post(query).get_data())
-        self.assertEqual(len(response['ratings']), 1)
+        response = self.app.post(query)
+        data = get_data(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data['ratings']), 1)
+
+    def test_give_non_existent_song_rating(self):
+        rating = '3'
+        song_id = 'F' * 24
+        query = '/songs/rating?rating=' + rating + '&song_id=' + song_id
+        response = self.app.post(query)
+        self.assertEqual(response.status_code, 400)
 
     def test_give_song_wrong_rating(self):
         rating = '6'
         song_id = str(self.song_id)
         query = '/songs/rating?rating=' + rating + '&song_id=' + song_id
-        response_status = self.app.post(query).status_code
-        self.assertEqual(response_status, 400)
+        response = self.app.post(query)
+        self.assertEqual(response.status_code, 400)
 
     def test_get_ratings_song(self):
         song_id = str(self.song_id)
@@ -106,11 +128,29 @@ class SongTestAPI(unittest.TestCase):
             mongo.db.songs.update_one({'_id': ObjectId(self.song_id)},
                                       {'$set': {'ratings': [1, 2, 3, 4]}})
         query = '/songs/avg/rating?song_id=' + song_id
-        response = loads(self.app.get(query).get_data())
-        self.assertEqual(len(response), 3)
-        self.assertEqual(response['avg'], 2.5)
-        self.assertEqual(response['max'], 4)
-        self.assertEqual(response['min'], 1)
+        response = self.app.get(query)
+        data = get_data(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data), 3)
+        self.assertEqual(data['avg'], 2.5)
+        self.assertEqual(data['max'], 4)
+        self.assertEqual(data['min'], 1)
+
+    def test_get_ratings_song_with_no_rating(self):
+        song_id = str(self.song_id)
+        query = '/songs/avg/rating?song_id=' + song_id
+        response = self.app.get(query)
+        self.assertEqual(response.status_code, 400)
+
+    def test_get_ratings_non_existent_song(self):
+        song_id = 'F' * 24
+        query = '/songs/avg/rating?song_id=' + song_id
+        response = self.app.get(query)
+        self.assertEqual(response.status_code, 400)
+
+
+def get_data(response):
+    return loads(response.get_data())
 
 
 if __name__ == '__main__':
