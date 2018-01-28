@@ -8,7 +8,7 @@ from .api_utils import FlaskApi
 def create_app(database):
     app = FlaskApi(__name__)
 
-    app.config['MONGO_DBNAME'] = database
+    app.config['MONGO_URI'] = database
     mongo.init_app(app)
     with app.app_context():
         mongo.db.songs.create_index([('title', pymongo.TEXT), ('artist', pymongo.TEXT)])

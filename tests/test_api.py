@@ -1,16 +1,18 @@
-import unittest
-from bson.json_util import loads
 import codecs
 import urllib
+import unittest
+import os
+from bson.json_util import loads
 
 from songs import create_app
 from songs.models import mongo
 
-# Load data once
+# Load data from file once
 data = []
 with codecs.open('tests/fixtures/songs.json', 'rU', 'utf-8') as f:
     for line in f:
         data.append(loads(line))
+    # Add extra song so to easily access _id
     song = {"artist": "The Andrews",
             "title": "Babysitting",
             "difficulty": 10.32,
@@ -18,11 +20,14 @@ with codecs.open('tests/fixtures/songs.json', 'rU', 'utf-8') as f:
             "released": "2018-01-25",
             "ratings": [3, 1, 2, 4]}
 
+DB_URI = os.environ.get('SONGS_DB_URI',
+                        default='mongodb://localhost/yousician-andres-test')
+
+
 class SongTestAPI(unittest.TestCase):
 
     def setUp(self):
-        db_name = 'yousician-andres-test'
-        self.songs_app = create_app(db_name)
+        self.songs_app = create_app(DB_URI)
 
         with self.songs_app.app_context():
             mongo.db.songs.insert_many(data)
