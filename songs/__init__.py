@@ -13,7 +13,6 @@ def create_app(database):
     with app.app_context():
         mongo.db.songs.create_index([('title', pymongo.TEXT), ('artist', pymongo.TEXT)])
         mongo.db.songs.create_index('level')
-        mongo.db.songs.create_index('_id')
 
     app.register_blueprint(songs_api)
     return app

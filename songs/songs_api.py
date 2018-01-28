@@ -19,21 +19,31 @@ songs_api = Blueprint('songs_api', __name__)
                                                      msg='Invalid song_id format'))
     }))
 def get_songs():
+    '''
+    We return songs ordered in descending order by its _id
+    If last_id is passed then we used index on _id to get a page faster,
+    and ignore page argument.
+    If page is passed then we use limit and skip to retrieve page
+    The endpoint only returns a list of songs with all their fields, but it
+    could be modified to return a dictionary that also includes information
+    about the list, like count of returned songs, of _id of last returned song.
+    '''
     page = request.args['page']
     last_id = request.args['last_id']
     cursor = {}
     if last_id is not None:
         # If we get last_id then we can produce faster pagination
-        # TODO: Debug and add new last_id to result object
-        mongo.db.songs.find({'_id': {'$lt': ObjectId(last_id)}},
-                            limit=SONGS_PER_PAGE).sort('_id', pymongo.ASCENDING)
+        cursor = mongo.db.songs.find({'_id': {'$lt': ObjectId(last_id)}},
+                                     limit=SONGS_PER_PAGE)
     elif page is not None:
         skip = (page - 1) * SONGS_PER_PAGE
         cursor = mongo.db.songs.find({}, limit=SONGS_PER_PAGE, skip=skip)
     else:
+        # No pagination
         cursor = mongo.db.songs.find({})
 
-    return ApiResult(list(cursor))
+    result = list(cursor.sort('_id', pymongo.DESCENDING))
+    return ApiResult(result)
 
 
 @songs_api.route('/songs/avg/difficulty')

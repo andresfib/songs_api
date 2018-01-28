@@ -28,10 +28,12 @@ class SongTestAPI(unittest.TestCase):
             self.total_songs = len(data)
             # We keep one _id to be used in tests
             self.song = data.pop()
-            result = mongo.db.songs.insert_one(self.song)
-            self.song_id = result.inserted_id
             # We insert the rest of the data
             mongo.db.songs.insert_many(data)
+            # We insert the single song last
+            result = mongo.db.songs.insert_one(self.song)
+            self.song_id = result.inserted_id
+
 
         self.app = self.songs_app.test_client()
 
