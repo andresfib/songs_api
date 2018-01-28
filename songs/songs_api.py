@@ -21,8 +21,7 @@ def get_songs():
     else:
         cursor = mongo.db.songs.find({})
 
-    result = ApiResult(list(cursor))
-    return result.to_response()
+    return ApiResult(list(cursor))
 
 
 @songs_api.route('/songs/avg/difficulty')
@@ -50,7 +49,7 @@ def get_avg_difficulty():
     result = ApiResult({
         'avg': round(result['avg'], 2),
         'level': level})
-    return result.to_response()
+    return result
 
 
 @songs_api.route('/songs/search')
@@ -60,8 +59,7 @@ def search_songs():
     query = make_and_text_query(message)
     cursor = mongo.db.songs.find({'$text': {'$search': query}})
 
-    result = ApiResult(list(cursor))
-    return result.to_response()
+    return ApiResult(list(cursor))
 
 
 @songs_api.route('/songs/rating', methods=['POST'])
@@ -78,8 +76,7 @@ def rate_song():
                               {'$push': {'ratings': int(rating)}})
     song = mongo.db.songs.find_one({'_id': ObjectId(song_id)})
 
-    result = ApiResult(song)
-    return result.to_response()
+    return ApiResult(song)
 
 
 @songs_api.route('/songs/avg/rating')
@@ -96,16 +93,18 @@ def get_song_ratings_stats():
         'max': max(ratings),
         'min': min(ratings)
     })
-    return result.to_response()
+    return result
 
 
 @songs_api.errorhandler(ApiException)
 def handle_api_exception(e):
-    return e.to_response()
+    return e.to_result()
 
 
 @songs_api.app_errorhandler(Exception)
 def handle_unexpected_error(error):
     # Not a real ApiResult but will make a nice response
     result = ApiResult({'message': 'Server error. Contact admin'}, status=500)
-    return result.to_response()
+    # Do some server logging
+    print(error)
+    return result

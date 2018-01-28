@@ -1,6 +1,6 @@
 from functools import update_wrapper
 from bson.json_util import dumps
-from flask import Response, request
+from flask import Response, request, Flask
 from voluptuous import Invalid
 
 
@@ -28,9 +28,20 @@ class ApiException(Exception):
         self.status = status
         super().__init__()
 
-    def to_response(self):
+    def to_result(self):
         return ApiResult({'message': self.message},
-                         status=self.status).to_response()
+                         status=self.status)
+
+
+class FlaskApi(Flask):
+    '''
+    We overload the make_response method to automatically get response from
+    ApiResult objects
+    '''
+    def make_response(self, rv):
+        if isinstance(rv, ApiResult):
+            return rv.to_response()
+        return Flask.make_response(self, rv)
 
 
 def make_and_text_query(message):
