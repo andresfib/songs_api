@@ -1,21 +1,33 @@
 from bson.objectid import ObjectId
 from flask import Blueprint, request
 from voluptuous import Schema, Coerce, Optional, Required, All, Length, Match, Range
-from .models import mongo
+import pymongo
+
+from .models import mongo, SONGS_PER_PAGE
 from .api_utils import make_and_text_query, parameter_schema
 from .api_utils import ApiResult, ApiException
 
 songs_api = Blueprint('songs_api', __name__)
 
-SONGS_PER_PAGE = 5
 
 @songs_api.route('/songs')
-@parameter_schema(Schema({
-    Optional('page', default=None): All(Coerce(int), Range(min=1))}))
+@parameter_schema(
+    Schema({
+        Optional('page', default=None): All(Coerce(int), Range(min=1)),
+        Optional('last_id', default=None): All(str,
+                                               Match(r'^[a-fA-F0-9]{24}$',
+                                                     msg='Invalid song_id format'))
+    }))
 def get_songs():
     page = request.args['page']
+    last_id = request.args['last_id']
     cursor = {}
-    if page is not None:
+    if last_id is not None:
+        # If we get last_id then we can produce faster pagination
+        # TODO: Debug and add new last_id to result object
+        mongo.db.songs.find({'_id': {'$lt': ObjectId(last_id)}},
+                            limit=SONGS_PER_PAGE).sort('_id', pymongo.ASCENDING)
+    elif page is not None:
         skip = (page - 1) * SONGS_PER_PAGE
         cursor = mongo.db.songs.find({}, limit=SONGS_PER_PAGE, skip=skip)
     else:
@@ -72,11 +84,13 @@ def rate_song():
 
     song_id = request.args['song_id']
     rating = request.args['rating']
-    mongo.db.songs.update_one({'_id': ObjectId(song_id)},
-                              {'$push': {'ratings': int(rating)}})
-    song = mongo.db.songs.find_one({'_id': ObjectId(song_id)})
-
-    return ApiResult(song)
+    result = mongo.db.songs.update_one({'_id': ObjectId(song_id)},
+                                       {'$push': {'ratings': int(rating)}})
+    if result.modified_count is 0:
+        raise ApiException('Song not found')
+    else:
+        song = mongo.db.songs.find_one({'_id': ObjectId(song_id)})
+        return ApiResult(song)
 
 
 @songs_api.route('/songs/avg/rating')
@@ -87,7 +101,13 @@ def rate_song():
 def get_song_ratings_stats():
     song_id = request.args.get('song_id', None)
     song = mongo.db.songs.find_one({'_id': ObjectId(song_id)}, {'ratings': 1})
-    ratings = song['ratings']
+    if song is None:
+        raise ApiException('Song not found')
+
+    ratings = song.get('ratings', None)
+    if ratings is None:
+        raise ApiException('Song has no ratings')
+
     result = ApiResult({
         'avg': sum(ratings)/float(len(ratings)),
         'max': max(ratings),
