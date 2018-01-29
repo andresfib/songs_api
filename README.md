@@ -2,7 +2,9 @@
 
 A small Flask API that queries a MongoDB collection of songs.
 
-You can specify where your song collection resides. E.g.:
+It uses [pipenv](https://docs.pipenv.org) to install the packages and run the app.
+
+You can specify the database where your song collection resides with its [URI](https://docs.mongodb.com/manual/reference/connection-string/):
 
 `export SONGS_DB_URI=mongodb://localhost/app_songs`
 
@@ -10,9 +12,13 @@ You can specify where your song collection resides. E.g.:
 
 `pipenv install`
 
+## Debugging ##
+
+`export FLASK_APP=songs_app.py; export FLASK_DEBUG=1; pipenv run flask run`
+
 ## Running ##
 
-`export FLASK_APP=__init__.py; export FLASK_DEBUG=1; pipenv run flask run`
+`export FLASK_APP=songs_app.py;export FLASK_DEBUG=0; pipenv run flask run`
 
 ## Testing ##
 

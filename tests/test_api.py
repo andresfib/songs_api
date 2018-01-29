@@ -12,10 +12,10 @@ DB_URI = os.environ.get('SONGS_DB_URI',
                         default='mongodb://localhost/yousician-andres-test')
 
 # Load data from file once
-data = []
+songs_list = []
 with codecs.open('tests/fixtures/songs.json', 'rU', 'utf-8') as f:
     for line in f:
-        data.append(loads(line))
+        songs_list.append(loads(line))
 
 
 class SongTestAPI(unittest.TestCase):
@@ -25,22 +25,21 @@ class SongTestAPI(unittest.TestCase):
 
         with self.songs_app.app_context():
             # We add songs to the test database
-            self.total_songs = len(data)
+            self.total_songs = len(songs_list)
             # We keep one _id to be used in tests
-            self.song = data.pop()
+            self.song = songs_list.pop()
             # We insert the rest of the data
-            mongo.db.songs.insert_many(data)
+            mongo.db.songs.insert_many(songs_list)
             # We insert the single song last
             result = mongo.db.songs.insert_one(self.song)
             self.song_id = result.inserted_id
-
 
         self.app = self.songs_app.test_client()
 
     def tearDown(self):
         with self.songs_app.app_context():
             mongo.db.songs.drop()
-            data.append(self.song)
+            songs_list.append(self.song)
 
     def test_get_songs(self):
         response = self.app.get('/songs')
