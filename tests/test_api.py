@@ -47,7 +47,6 @@ class SongTestAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(data), 11)
 
-
     def test_get_third_page_of_songs(self):
         response = self.app.get('/songs?page=3')
         data = get_data(response)
@@ -149,7 +148,7 @@ class SongTestAPI(unittest.TestCase):
 
 
 def get_data(response):
-    return loads(response.get_data())
+    return loads(response.get_data(as_text=True))
 
 
 if __name__ == '__main__':

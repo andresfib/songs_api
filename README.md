@@ -2,7 +2,7 @@
 
 A small Flask API that queries a MongoDB collection of songs.
 
-It uses [pipenv](https://docs.pipenv.org) to install the packages and run the app.
+It uses [pipenv](https://docs.pipenv.org) to install the packages and run the app. Tested with Python 3.5 and 3.6.
 
 You can specify the database where your song collection resides with its [URI](https://docs.mongodb.com/manual/reference/connection-string/):
 
