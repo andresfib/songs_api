@@ -54,10 +54,11 @@ def parameter_schema(schema):
         def new_func(*args, **kwargs):
             try:
                 parameters = request.args.copy()
-                request.args = schema(parameters)
+                # We assume parameters only have one value
+                parameters = schema(parameters).to_dict()
             except Invalid as e:
                 raise ApiException('Invalid parameter: %s %s' %
                                    (e.msg, e.path))
-            return f(*args, **kwargs)
+            return f(*args, **kwargs, **parameters)
         return update_wrapper(new_func, f)
     return decorator

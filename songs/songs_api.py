@@ -1,6 +1,7 @@
 from bson.objectid import ObjectId
-from flask import Blueprint, request
-from voluptuous import Schema, Coerce, Optional, Required, All, Length, Match, Range
+from flask import Blueprint
+from voluptuous import Schema, Coerce, Optional, Required
+from voluptuos import All, Length, Match, Range
 import pymongo
 
 from .models import mongo, SONGS_PER_PAGE
@@ -8,17 +9,16 @@ from .api_utils import make_and_text_query, parameter_schema
 from .api_utils import ApiResult, ApiException
 
 songs_api = Blueprint('songs_api', __name__)
+song_id_schema = All(str, Match(r'^[a-fA-F0-9]{24}$',
+                                msg='Invalid song_id format'))
 
 
 @songs_api.route('/songs')
 @parameter_schema(
     Schema({
         Optional('page', default=None): All(Coerce(int), Range(min=1)),
-        Optional('last_id', default=None): All(str,
-                                               Match(r'^[a-fA-F0-9]{24}$',
-                                                     msg='Invalid song_id format'))
-    }))
-def get_songs():
+        Optional('last_id', default=None): song_id_schema}))
+def get_songs(page, last_id):
     '''
     We return songs ordered in descending order by its _id
     If last_id is passed then we used index on _id to get a page faster,
@@ -28,8 +28,6 @@ def get_songs():
     could be modified to return a dictionary that also includes information
     about the list, like count of returned songs, of _id of last returned song.
     '''
-    page = request.args['page']
-    last_id = request.args['last_id']
     cursor = {}
     if last_id is not None:
         # If we get last_id then we can produce faster pagination
@@ -48,9 +46,8 @@ def get_songs():
 
 @songs_api.route('/songs/avg/difficulty')
 @parameter_schema(Schema({Optional('level', default=None): Coerce(int)}))
-def get_avg_difficulty():
+def get_avg_difficulty(level):
     pipeline = []
-    level = request.args['level']
     if level is not None:
         pipeline.append({'$match': {'level': level}})
     pipeline.append({
@@ -76,8 +73,7 @@ def get_avg_difficulty():
 
 @songs_api.route('/songs/search')
 @parameter_schema(Schema({Required('message'): All(str, Length(min=3))}))
-def search_songs():
-    message = request.args.get('message', None)
+def search_songs(message):
     query = make_and_text_query(message)
     cursor = mongo.db.songs.find({'$text': {'$search': query}})
 
@@ -86,14 +82,10 @@ def search_songs():
 
 @songs_api.route('/songs/rating', methods=['POST'])
 @parameter_schema(Schema({
-    Required('song_id'): All(str, Match(r'^[a-fA-F0-9]{24}$',
-                                        msg='Invalid song_id format')),
+    Required('song_id'): song_id_schema,
     Required('rating'): All(Coerce(int), Range(min=1, max=5))
 }))
-def rate_song():
-
-    song_id = request.args['song_id']
-    rating = request.args['rating']
+def rate_song(song_id, rating):
     result = mongo.db.songs.update_one({'_id': ObjectId(song_id)},
                                        {'$push': {'ratings': int(rating)}})
     if result.modified_count is 0:
@@ -104,12 +96,8 @@ def rate_song():
 
 
 @songs_api.route('/songs/avg/rating')
-@parameter_schema(Schema({
-    Required('song_id'): All(str, Match(r'^[a-fA-F0-9]{24}$',
-                                        msg='Invalid song_id format')),
-}))
-def get_song_ratings_stats():
-    song_id = request.args.get('song_id', None)
+@parameter_schema(Schema({Required('song_id'): song_id_schema}))
+def get_song_ratings_stats(song_id):
     song = mongo.db.songs.find_one({'_id': ObjectId(song_id)}, {'ratings': 1})
     if song is None:
         raise ApiException('Song not found')
