@@ -1,7 +1,7 @@
 from bson.objectid import ObjectId
 from flask import Blueprint
 from voluptuous import Schema, Coerce, Optional, Required
-from voluptuos import All, Length, Match, Range
+from voluptuous import All, Length, Match, Range
 import pymongo
 
 from .models import mongo, SONGS_PER_PAGE
@@ -9,15 +9,15 @@ from .api_utils import make_and_text_query, parameter_schema
 from .api_utils import ApiResult, ApiException
 
 songs_api = Blueprint('songs_api', __name__)
-song_id_schema = All(str, Match(r'^[a-fA-F0-9]{24}$',
-                                msg='Invalid song_id format'))
+objectId_schema = All(str, Match(r'^[a-fA-F0-9]{24}$',
+                                 msg='Invalid song_id format'))
 
 
 @songs_api.route('/songs')
 @parameter_schema(
     Schema({
         Optional('page', default=None): All(Coerce(int), Range(min=1)),
-        Optional('last_id', default=None): song_id_schema}))
+        Optional('last_id', default=None): objectId_schema}))
 def get_songs(page, last_id):
     '''
     We return songs ordered in descending order by its _id
@@ -82,7 +82,7 @@ def search_songs(message):
 
 @songs_api.route('/songs/rating', methods=['POST'])
 @parameter_schema(Schema({
-    Required('song_id'): song_id_schema,
+    Required('song_id'): objectId_schema,
     Required('rating'): All(Coerce(int), Range(min=1, max=5))
 }))
 def rate_song(song_id, rating):
@@ -96,7 +96,7 @@ def rate_song(song_id, rating):
 
 
 @songs_api.route('/songs/avg/rating')
-@parameter_schema(Schema({Required('song_id'): song_id_schema}))
+@parameter_schema(Schema({Required('song_id'): objectId_schema}))
 def get_song_ratings_stats(song_id):
     song = mongo.db.songs.find_one({'_id': ObjectId(song_id)}, {'ratings': 1})
     if song is None:
